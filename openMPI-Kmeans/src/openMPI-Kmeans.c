@@ -20,7 +20,7 @@ int kmean_write(char *filename_clustercenter, char *filename_belongtocluster,
 
 	int i, j;
 	int rank, nproc, err;
-	char *str;
+	char str[1024];
 	MPI_Comm_rank(comm, &rank);
 	MPI_Comm_size(comm, &nproc);
 
