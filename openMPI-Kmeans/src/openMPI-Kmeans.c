@@ -10,8 +10,11 @@
 #include <mpi.h>
 #include <stdio.h>
 #include <string.h>
+
 //
-//float** mpiRead(string fname, int nline, int ndim, MPI_Comm  comm) {
+float** kmeans_read() {
+	return 0;
+}
 //	float data[nline][ndim], ** dataShard;
 //	const int root = 0;
 //	int rank, size;
@@ -158,6 +161,8 @@ int kmean_write(char *filename_clustercenter, char *filename_belongtocluster,
 	return 1;
 }
 
-int main() {
+int kmeans(float **data, int numberofClusters, int numberofCoordinates,
+		int numberofTotalData, float stopthreshold, int *membership,
+		float **clusters, MPI_Comm comm) {
 
 }
