@@ -18,11 +18,6 @@
 
 int main(int argc, char **argv) {
 
-	int nproc, rank;
-	MPI_Init(&argc, &argv);
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	MPI_Comm_size(MPI_COMM_WORLD, &nproc);
-
 	extern char *optarg;
 	extern int optind, optopt;
 	int c, ncluster = 4, rank, nworker, nline, totalLine, ndim, i = 0;
@@ -104,6 +99,5 @@ int main(int argc, char **argv) {
 
 	MPI_Finalize();
 	return EXIT_SUCCESS;
->>>>>>> branch 'master' of https://github.com/scriptkid85/OpenMPI-Kmeans.git
 }
 

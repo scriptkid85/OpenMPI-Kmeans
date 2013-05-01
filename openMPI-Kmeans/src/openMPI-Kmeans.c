@@ -9,7 +9,11 @@
  */
 #include <mpi.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <float.h>
+#include "openMPI-Kmeans.h"
+#define MY_MAXITER 1000
 
 //
 float** kmeans_read(char *fname, int *nline, int ndim, MPI_Comm comm) {
@@ -35,7 +39,7 @@ float** kmeans_read(char *fname, int *nline, int ndim, MPI_Comm comm) {
 
 		fp = fopen(fname, "r");
 		if (fp == NULL )
-			exit(EXIT_FAILURE);
+			exit(1);
 
 		while ((read = getline(&line, &len, fp)) != -1) {
 			printf("Retrieved line of length %zu :\n", read);
@@ -60,7 +64,7 @@ float** kmeans_read(char *fname, int *nline, int ndim, MPI_Comm comm) {
 		}
 
 		// cook rank 0's own data
-		dataShard = (float**)malloc(startInit * ndim * sizeof(float));
+		dataShard = (float**) malloc(startInit * ndim * sizeof(float));
 		copy(&data[0][0], &data[startInit][0], dataShard);
 		free(data);
 	}
@@ -70,8 +74,9 @@ float** kmeans_read(char *fname, int *nline, int ndim, MPI_Comm comm) {
 		int rem = *nline % size;
 		nline = rank < rem ? div + 1 : div;
 
-		dataShard = (float**)malloc(*nline * ndim * sizeof(float));
-		MPI_Recv(dataShard, *nline * ndim, MPI_FLOAT, root, rank, comm, &status);
+		dataShard = (float**) malloc(*nline * ndim * sizeof(float));
+		MPI_Recv(dataShard, *nline * ndim, MPI_FLOAT, root, rank, comm,
+				&status);
 	}
 
 	return dataShard;
@@ -161,8 +166,109 @@ int kmean_write(char *filename_clustercenter, char *filename_belongtocluster,
 	return 1;
 }
 
-int kmeans(float **data, int numberofClusters, int numberofCoordinates,
-		int numberofTotalData, float stopthreshold, int *membership,
-		float **clusters, MPI_Comm comm) {
+//for find the nearest neighbor in the given set;
+int find_NN(float *datapoint, float ** neighborset, int numberofNeighber,
+		int numberofCoordinates) {
+	int i, j;
+	int nearest_neighbor = -1;
+	float distance, mindist;
+	mindist = FLT_MAX;
+	for(i = 0; i < numberofNeighber; i++){
+		distance = 0.0;
+		for(j = 0; j < numberofCoordinates; j++){
+			distance += (datapoint[j]-neighborset[i][j]) * (datapoint[j]-neighborset[i][j]);
+			if(distance < mindist){
+				nearest_neighbor = i;
+			}
+		}
+	}
+	return nearest_neighbor;
+}
 
+int kmeans(float **data, int numberofClusters, int numberofCoordinates,
+		int numberofData, float stopthreshold, int *membership,
+		float **clusters, MPI_Comm comm) {
+	float **updatedClusters;
+	int *updatedClusterSize;
+	int *tmpClusterSize;
+
+	int i, j;
+	//initialization
+	//malloc space for pointers
+	updatedClusterSize = (int *) calloc(numberofClusters, sizeof(int));
+	tmpClusterSize = (int *) calloc(numberofClusters, sizeof(int));
+
+	updatedClusters = (float **) malloc(numberofClusters * sizeof(float*));
+	updatedClusters[0] = (float *) calloc(numberofClusters * numberofCoordinates,
+			sizeof(float));
+
+	if (!updatedClusterSize || !tmpClusterSize || !updatedClusters
+			|| !updatedClusters[0]) {
+		printf("Error: Cannot calloc space for the new cluster variables");
+		exit(1);
+	}
+
+	//reset memeber ship
+	membership[0] = -1;
+	for (i = 1; i < numberofData; i++) {
+		updatedClusters[i] = updatedClusters[i - 1] + numberofCoordinates;
+		membership[i] = -1;
+	}
+
+	//get the total data number
+	int numberofTotalData;
+	MPI_Allreduce(&numberofData, &numberofTotalData, 1, MPI_INT, MPI_SUM, comm);
+
+	float delta;
+	delta = FLT_MAX;
+	int index, differences;
+	int iterations;
+	iterations = 0;
+	while(delta > stopthreshold && iterations < MY_MAXITER){
+		iterations ++;
+//		may use the Wtime to record computing time
+//		double time = MPI_Wtime();
+
+		delta = 0.0;
+		for(i = 0; i < numberofData; i++) {
+			index = find_NN(data[i], clusters, numberofClusters, numberofCoordinates);
+			if(index < 0){
+				printf("Error: mistake in finding nearest cluster.");
+				exit(1);
+			}
+			if(index != membership[i])differences ++;
+			membership[i] = index;
+			updatedClusterSize[index]++;
+			for(j = 0; j < numberofCoordinates; j++) {
+				updatedClusters[index][j] += data[i][j];
+			}
+		}
+
+		//reduce all cluster's partial sums to the total sum for every cluster
+		MPI_Allreduce(updatedClusters[0], clusters[0], numberofClusters * numberofCoordinates, MPI_FLOAT, MPI_SUM, comm);
+		//reduce all cluster'size to get the total size for every cluster
+
+		MPI_Allreduce(updatedClusterSize, tmpClusterSize, numberofClusters, MPI_INT, MPI_SUM, comm);
+
+		//compute the new cluster center
+		for(i = 0; i < numberofClusters; i++){
+			for(j = 0; j < numberofCoordinates; j++){
+				if(tmpClusterSize[i] > 0){
+					clusters[i][j] /= tmpClusterSize[i];
+				}
+				updatedClusters[i][j] = 0;
+			}
+			updatedClusterSize[i] = 0;
+		}
+
+		int totaldifferences;
+		MPI_Allreduce(&differences, &totaldifferences, 1, MPI_INT, MPI_SUM, comm);
+		delta = totaldifferences / (double) numberofTotalData;
+	}
+
+	free(updatedClusters);
+	free(updatedClusters[0]);
+	free(updatedClusterSize);
+	free(tmpClusterSize);
+	return 1;
 }
