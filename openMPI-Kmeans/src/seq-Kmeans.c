@@ -15,7 +15,44 @@
 #define MY_MAXITER 1000
 
 
+float** kmeans_read(char *fname, int nline, int ndim) {
+	float **data;
+	char *token;
+	int i = 1, num = 0;
 
+	//printf("nline:%d\tndim:%d\n", *nline, ndim);
+
+	FILE * fp;
+	char * line = NULL;
+	size_t len = 0;
+	ssize_t read;
+
+	fp = fopen(fname, "r");
+	if (fp == NULL)
+		exit(EXIT_FAILURE);
+
+	data = (float **) malloc(nline * sizeof(float *));
+	data[0] = (float *) malloc(nline * ndim * sizeof(float));
+	for(i = 1; i < nline; i++)
+		data[i] = data[i-1] + ndim;
+
+	while ((read = getline(&line, &len, fp)) != -1) {
+		int j = 0;
+		token = strtok(line, " ,");
+		while (token != NULL) {
+			data[num][j++] = atof(token);
+//				printf("%s\t", token);
+			token = strtok(NULL, " ,");
+		}
+		num++;
+//			printf("%d\n", num);
+//			printf("Retrieved line of length %zu :\n", read);
+//			printf("%s", line);
+	}
+
+
+	return data;
+}
 
 
 
