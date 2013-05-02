@@ -1,4 +1,4 @@
-TARGET = TestMPI
+TARGET = openMPI
 LIBS = -lm
 CC = mpicc
 CFLAGS = -g -Wall
