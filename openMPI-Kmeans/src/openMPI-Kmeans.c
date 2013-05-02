@@ -111,7 +111,7 @@ float** kmeans_read(char *fname, int *nline, int ndim, MPI_Comm comm) {
 	return dataShard;
 }
 
-int kmean_write(char *outputfilename,
+int kmeans_write(char *outputfilename,
 		int numberofLocalData, int numberofTotalData, int numberofClusters,
 		int numberofCoordinates, float **clusters, int *localMemebership,
 		int ranktooutput, MPI_Comm comm) {
