@@ -29,8 +29,8 @@ float** kmeans_read(char *fname, int *nline, int ndim, MPI_Comm comm) {
 
 	/* everyone calls bcast, data is taken from root and ends up in everyone's buf */
 	// send to other processes
-	MPI_Bcast(nline, 1, MPI_INT, 0, comm);
-	MPI_Bcast(&ndim, 1, MPI_INT, 0, comm);
+//	MPI_Bcast(nline, 1, MPI_INT, 0, comm);
+//	MPI_Bcast(&ndim, 1, MPI_INT, 0, comm);
 
 	//printf("nline:%d\tndim:%d\n", *nline, ndim);
 
