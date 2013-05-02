@@ -215,12 +215,9 @@ int find_NN(float *datapoint, float ** neighborset, int numberofNeighber,
 	float distance, mindist;
 	mindist = FLT_MAX;
 	for(i = 0; i < numberofNeighber; i++){
-		distance = 0.0;
-		for(j = 0; j < numberofCoordinates; j++){
-			distance += (datapoint[j]-neighborset[i][j]) * (datapoint[j]-neighborset[i][j]);
-			if(distance < mindist){
-				nearest_neighbor = i;
-			}
+		distance = Compute_ED(datapoint, neighborset[i]);
+		if(distance < mindist){
+			nearest_neighbor = i;
 		}
 	}
 	return nearest_neighbor;
