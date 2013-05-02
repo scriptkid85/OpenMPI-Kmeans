@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
 
 	// write cluster centroids to disk
 	// TODO 2 write to same outFile ?
-	kmeans_write(outFile, outFile, nline, totalLine, ncluster, ndim , centroid, label, 0, MPI_COMM_WORLD);
+	kmeans_write(outFile, nline, totalLine, ncluster, ndim , centroid, label, 0, MPI_COMM_WORLD);
 
 	free(label);
 	free(centroid[0]);

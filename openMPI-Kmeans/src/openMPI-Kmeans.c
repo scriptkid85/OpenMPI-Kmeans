@@ -13,6 +13,7 @@
 #include <string.h>
 #include <float.h>
 #include "openMPI-Kmeans.h"
+#include <math.h>
 #define MY_MAXITER 1000
 
 //
@@ -110,7 +111,7 @@ float** kmeans_read(char *fname, int *nline, int ndim, MPI_Comm comm) {
 	return dataShard;
 }
 
-int kmean_write(char *filename_clustercenter, char *filename_belongtocluster,
+int kmean_write(char *outputfilename,
 		int numberofLocalData, int numberofTotalData, int numberofClusters,
 		int numberofCoordinates, float **clusters, int *localMemebership,
 		int ranktooutput, MPI_Comm comm) {
@@ -126,13 +127,13 @@ int kmean_write(char *filename_clustercenter, char *filename_belongtocluster,
 	if (rank == ranktooutput) {
 		printf(
 				"Start writing coordinates of K=%d cluster centers to file \"%s\"\n",
-				numberofClusters, filename_clustercenter);
+				numberofClusters, outputfilename);
 
-		err = MPI_File_open(comm, filename_clustercenter,
+		err = MPI_File_open(comm, outputfilename,
 				MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &mpif);
 		if (err != MPI_SUCCESS) {
 			printf("Error: Cannot access file \"%s\"\n",
-					filename_clustercenter);
+					outputfilename);
 			MPI_Finalize();
 			exit(1);
 		} else {
@@ -148,19 +149,19 @@ int kmean_write(char *filename_clustercenter, char *filename_belongtocluster,
 				MPI_File_write(mpif, "\n", 1, MPI_CHAR, &mpistatus);
 			}
 		}
-		MPI_File_close(&mpif);
-
-		printf(
-				"Start writing clusters to which all %d data belonging to file \"%s\"\n",
-				numberofTotalData, filename_belongtocluster);
-		err = MPI_File_open(comm, filename_belongtocluster,
-				MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &mpif);
-		if (err != MPI_SUCCESS) {
-			printf("Error: Cannot access file \"%s\"\n",
-					filename_belongtocluster);
-			MPI_Finalize();
-			exit(1);
-		}
+//		MPI_File_close(&mpif);
+//
+//		printf(
+//				"Start writing clusters to which all %d data belonging to file \"%s\"\n",
+//				numberofTotalData, filename_belongtocluster);
+//		err = MPI_File_open(comm, filename_belongtocluster,
+//				MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &mpif);
+//		if (err != MPI_SUCCESS) {
+//			printf("Error: Cannot access file \"%s\"\n",
+//					filename_belongtocluster);
+//			MPI_Finalize();
+//			exit(1);
+//		}
 
 		//wait for the other memebership from other processors*/
 		int divd = numberofTotalData / nproc;
@@ -193,6 +194,18 @@ int kmean_write(char *filename_clustercenter, char *filename_belongtocluster,
 	}
 	return 1;
 }
+
+//for computing the Euclidean distance (for 2D data point)
+float Compute_ED(float *datapoint1, float *datapoint2, int numberofCoordinates){
+	float distance = 0;
+	int i;
+	for(i = 0; i < numberofCoordinates; i++){
+		distance += (datapoint1[i] - datapoint2[i]) * (datapoint1[i] - datapoint2[i]);
+	}
+	return sqrt(distance);
+}
+
+
 
 //for find the nearest neighbor in the given set;
 int find_NN(float *datapoint, float ** neighborset, int numberofNeighber,

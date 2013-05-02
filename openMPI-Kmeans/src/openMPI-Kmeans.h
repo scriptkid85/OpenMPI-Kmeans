@@ -10,7 +10,7 @@
 
 
 float** kmeans_read(char*, int*, int, MPI_Comm);
-int     kmeans_write(char*, char*, int, int, int, int, float**, int*, int, MPI_Comm);
+int     kmeans_write(char*, int, int, int, int, float**, int*, int, MPI_Comm);
 int     kmeans(float**, int, int, int, float, int*, float**, MPI_Comm);
 
 
