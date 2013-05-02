@@ -19,16 +19,20 @@
 float** kmeans_read(char *fname, int *nline, int ndim, MPI_Comm comm) {
 	float data[*nline][ndim], **dataShard;
 	const int root = 0;
-	int rank, size, i = 1;
+	int rank, size, i = 1, num = 0;
+	char *token;
 	MPI_Status status;
 
 	MPI_Comm_rank(comm, &rank);
-	MPI_Comm_rank(comm, &size);
+	MPI_Comm_size(comm, &size);
+	//printf("rank:%d\tsize:%d\n", rank, size);
 
 	/* everyone calls bcast, data is taken from root and ends up in everyone's buf */
 	// send to other processes
 	MPI_Bcast(nline, 1, MPI_INT, 0, comm);
 	MPI_Bcast(&ndim, 1, MPI_INT, 0, comm);
+
+	//printf("nline:%d\tndim:%d\n", *nline, ndim);
 
 	// process id==0
 	if (rank == root) {
@@ -39,44 +43,68 @@ float** kmeans_read(char *fname, int *nline, int ndim, MPI_Comm comm) {
 
 		fp = fopen(fname, "r");
 		if (fp == NULL )
-			exit(1);
+			exit(EXIT_FAILURE);
 
 		while ((read = getline(&line, &len, fp)) != -1) {
-			printf("Retrieved line of length %zu :\n", read);
-			printf("%s", line);
+			int j = 0;
+			token = strtok(line, " ,");
+			while (token != NULL ) {
+				data[num][j++] = atof(token);
+//				printf("%s\t", token);
+				token = strtok(NULL, " ,");
+			}
+			num++;
+//			printf("%d\n", num);
+//			printf("Retrieved line of length %zu :\n", read);
+//			printf("%s", line);
 		}
-
-		if (line)
-			free(line);
 
 		// send data to different processes
 		int div = *nline / size;	// # of lines for each block
 		int rem = *nline % size;
+//		printf("here! div:%d\trem:%d", div, rem);
+
 		int start = rem > 0 ? div + 1 : div;
 		int startInit = start;	// save for cooking rank 0's own data
 		// start from the machine with rank 1 (rank 0 machine keep a part of data)
 		for (i = 1; i < size; i++) {
 			// transfer data nearly equally
-			int transSize = i > rem ? div + 1 : div;
-			// TODO: tag == 0?
-			MPI_Send(data[start], ndim * transSize, MPI_FLOAT, i, 0, comm);
+			int transSize = i < rem ? div + 1 : div;
+
+			printf("rank:%d sending...size:%d\n", rank, transSize);
+			// dst, tag, comm
+			MPI_Send(data[start], ndim * transSize, MPI_FLOAT, i, i, comm);
 			start += transSize;
 		}
 
 		// cook rank 0's own data
-		dataShard = (float**) malloc(startInit * ndim * sizeof(float));
-		copy(&data[0][0], &data[startInit][0], dataShard);
-		free(data);
+//		dataShard = data;
+//		dataShard[0] = (float *) realloc(dataShard[0], startInit * ndim *sizeof(float));
+//		dataShard = (float **) realloc(dataShard, startInit * sizeof(float *));	// pointers for each row
+		*nline = startInit;
+		dataShard = (float**) malloc(*nline * sizeof(float *));
+		dataShard[0] = (float *) malloc(*nline * ndim * sizeof(float));
+		for (i = 1; i < *nline; i++)
+			dataShard[i] = dataShard[i-1] + ndim;
+
+		memcpy(dataShard[0], data[0], *nline * ndim * sizeof(float));
 	}
 	// other processes
 	else {
 		int div = *nline / size;	// # of lines for each block
 		int rem = *nline % size;
-		nline = rank < rem ? div + 1 : div;
+		*nline = rank < rem ? div + 1 : div;
 
-		dataShard = (float**) malloc(*nline * ndim * sizeof(float));
-		MPI_Recv(dataShard, *nline * ndim, MPI_FLOAT, root, rank, comm,
-				&status);
+		dataShard = (float**) malloc(*nline * sizeof(float *));
+		dataShard[0] = (float *) malloc(*nline * ndim * sizeof(float));
+		for (i = 1; i < *nline; i++) {
+			dataShard[i] = dataShard[i-1] + ndim;
+		}
+
+		printf("rank:%d receiving..nline:%d\n", rank, *nline);
+		// src, tag, comm, status
+		MPI_Recv(dataShard[0], *nline * ndim, MPI_FLOAT, root, rank, comm, &status);
+		printf("rank:%d received done\n", rank);
 	}
 
 	return dataShard;
