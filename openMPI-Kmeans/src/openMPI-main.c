@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
 	stimeCluster = MPI_Wtime();
 	label = (int *) malloc(nline * sizeof(int));
 	//printf("rank:%d prior kmeans\n", rank);
-	kmeans(data, ndim, nline, ncluster, thres, label, centroid, MPI_COMM_WORLD);
+	kmeans(data, ncluster, ndim, nline, thres, label, centroid, MPI_COMM_WORLD);
 	printf("rank:%d kmeans done\n", rank);
 	etimeCluster = MPI_Wtime();
 

@@ -115,40 +115,46 @@ int kmeans_write(char *outputfilename,
 		int numberofLocalData, int numberofTotalData, int numberofClusters,
 		int numberofCoordinates, float **clusters, int *localMemebership,
 		int ranktooutput, MPI_Comm comm) {
-	MPI_File mpif;
+
+	FILE *fp;
 	MPI_Status mpistatus;
 
 	int i, j;
-	int rank, nproc, err;
-	char str[1024];
+
+
+	int rank, nproc;
 	MPI_Comm_rank(comm, &rank);
 	MPI_Comm_size(comm, &nproc);
 
 	if (rank == ranktooutput) {
-		printf(
-				"Start writing coordinates of K=%d cluster centers to file \"%s\"\n",
+		printf("Start writing results (cluster centroid and membership) of K=%d cluster centers to file \"%s\"\n",
 				numberofClusters, outputfilename);
 
-		err = MPI_File_open(comm, outputfilename,
-				MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &mpif);
-		if (err != MPI_SUCCESS) {
-			printf("Error: Cannot access file \"%s\"\n",
-					outputfilename);
-			MPI_Finalize();
-			exit(1);
+//		err = MPI_File_open(MPI_COMM_SELF, outputfilename,
+//				MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &mpif);
+//		if (err != MPI_SUCCESS) {
+//			printf("Error: Cannot access file \"%s\"\n",
+//					outputfilename);
+//			MPI_Finalize();
+//			exit(1);
+		fp = fopen(outputfilename, "w");
+		if (fp == NULL ){
+			printf("Error: cannot access the outputfile: %s\n", outputfilename);
+			exit(EXIT_FAILURE);
 		} else {
 			for (i = 0; i < numberofClusters; i++) {
 				char str[32];
-				sprintf(str, "%d ", i);
-				MPI_File_write(mpif, str, strlen(str), MPI_CHAR, &mpistatus);
+				fprintf(fp, "%d ", i);
+//				MPI_File_write(mpif, str, strlen(str), MPI_CHAR, &mpistatus);
 				for (j = 0; j < numberofCoordinates; j++) {
-					sprintf(str, "%f ", clusters[i][j]);
-					MPI_File_write(mpif, str, strlen(str), MPI_CHAR,
-							&mpistatus);
+					fprintf(fp, "%f ", clusters[i][j]);
+
 				}
-				MPI_File_write(mpif, "\n", 1, MPI_CHAR, &mpistatus);
+//				MPI_File_write(mpif, "\n", 1, MPI_CHAR, &mpistatus);
+				fprintf(fp, "\n");
 			}
 		}
+		printf("Finish writing clusters");
 //		MPI_File_close(&mpif);
 //
 //		printf(
@@ -173,9 +179,9 @@ int kmeans_write(char *outputfilename,
 			if (i == ranktooutput) {
 				//print out local membership
 				for (j = 0; j < numberofLocalData; j++) {
-					sprintf(str, "%d %d\n", outputCount++, localMemebership[j]);
-					MPI_File_write(mpif, str, strlen(str), MPI_CHAR,
-							&mpistatus);
+					fprintf(fp, "%d %d\n", outputCount++, localMemebership[j]);
+//					MPI_File_write(mpif, str, strlen(str), MPI_CHAR,
+//							&mpistatus);
 				}
 				continue;
 			}
@@ -183,11 +189,11 @@ int kmeans_write(char *outputfilename,
 					&mpistatus);
 			//print out received membership
 			for (j = 0; j < numberofRecData; j++) {
-				sprintf(str, "%d %d\n", outputCount++, localMemebership[j]);
-				MPI_File_write(mpif, str, strlen(str), MPI_CHAR, &mpistatus);
+				fprintf(fp, "%d %d\n", outputCount++, localMemebership[j]);
+//				MPI_File_write(mpif, str, strlen(str), MPI_CHAR, &mpistatus);
 			}
 		}
-		MPI_File_close(&mpif);
+		fclose(fp);
 	} else {
 		MPI_Send(localMemebership, numberofLocalData, MPI_INT, ranktooutput,
 				rank, comm);
@@ -217,6 +223,7 @@ int find_NN(float *datapoint, float ** neighborset, int numberofNeighber,
 	for(i = 0; i < numberofNeighber; i++){
 		distance = Compute_ED(datapoint, neighborset[i], numberofCoordinates);
 		if(distance < mindist){
+			mindist = distance;
 			nearest_neighbor = i;
 		}
 	}
@@ -230,40 +237,54 @@ int kmeans(float **data, int numberofClusters, int numberofCoordinates,
 	int *updatedClusterSize;
 	int *tmpClusterSize;
 
-	int i, j;
+	int i, j, totaldifferences;;
+	int rank;
+	MPI_Comm_rank(comm, &rank);
+
+	for(i = 0; i < numberofClusters; i++ ){
+			printf("Proc %d:cluster%d: %f %f\n", rank, i, clusters[i][0], clusters[i][1]);
+	}
+
+	//get the total data number
+	int numberofTotalData = 0;
+	printf("Proc %d: start communicate totalnumber", rank);
+	MPI_Allreduce(&numberofData, &numberofTotalData, 1, MPI_INT, MPI_SUM, comm);
+	printf("Proc %d: total number %d.\n", rank, numberofTotalData);
+
+
 	//initialization
 	//malloc space for pointers
 	updatedClusterSize = (int *) calloc(numberofClusters, sizeof(int));
 	tmpClusterSize = (int *) calloc(numberofClusters, sizeof(int));
 
-	updatedClusters = (float **) malloc(numberofClusters * sizeof(float*));
+	updatedClusters = (float **) calloc(numberofClusters, sizeof(float*));
 	updatedClusters[0] = (float *) calloc(numberofClusters * numberofCoordinates,
 			sizeof(float));
 
 	if (!updatedClusterSize || !tmpClusterSize || !updatedClusters
 			|| !updatedClusters[0]) {
-		printf("Error: Cannot calloc space for the new cluster variables");
+		printf("Proc %d Error: Cannot calloc space for the new cluster variables", rank);
 		exit(1);
 	}
 
 	//reset memeber ship
 	membership[0] = -1;
-	for (i = 1; i < numberofData; i++) {
+	for (i = 1; i < numberofClusters; i++) {
 		updatedClusters[i] = updatedClusters[i - 1] + numberofCoordinates;
 		membership[i] = -1;
 	}
 
-	//get the total data number
-	int numberofTotalData;
-	MPI_Allreduce(&numberofData, &numberofTotalData, 1, MPI_INT, MPI_SUM, comm);
+	for(i = 0; i < numberofData; i++ ){
+		printf("Proc %d: membership of %d: %d\n",rank, i, membership[i]);
+	}
 
 	float delta;
 	delta = FLT_MAX;
 	int index, differences;
-	int iterations;
-	iterations = 0;
+	int iterations = 0;
 	while(delta > stopthreshold && iterations < MY_MAXITER){
 		iterations ++;
+		printf("Proc %d: iteration %d \n", rank, iterations);
 //		may use the Wtime to record computing time
 //		double time = MPI_Wtime();
 
@@ -271,9 +292,10 @@ int kmeans(float **data, int numberofClusters, int numberofCoordinates,
 		for(i = 0; i < numberofData; i++) {
 			index = find_NN(data[i], clusters, numberofClusters, numberofCoordinates);
 			if(index < 0){
-				printf("Error: mistake in finding nearest cluster.");
+				printf("Proc %d Error: mistake in finding nearest cluster.", rank);
 				exit(1);
 			}
+			printf("Proc %d: NN of data %d: %d.\n", rank, i, index);
 			if(index != membership[i])differences ++;
 			membership[i] = index;
 			updatedClusterSize[index]++;
@@ -281,12 +303,16 @@ int kmeans(float **data, int numberofClusters, int numberofCoordinates,
 				updatedClusters[index][j] += data[i][j];
 			}
 		}
-
+		printf("Proc %d: finish neighbors\n", rank, i, index);
 		//reduce all cluster's partial sums to the total sum for every cluster
 		MPI_Allreduce(updatedClusters[0], clusters[0], numberofClusters * numberofCoordinates, MPI_FLOAT, MPI_SUM, comm);
+//		MPI_Allreduce(updatedClusters[0], clusters[0], 1, MPI_FLOAT, MPI_SUM, comm);
+
 		//reduce all cluster'size to get the total size for every cluster
+		printf("Proc %d: finish reducing clusters\n", rank);
 
 		MPI_Allreduce(updatedClusterSize, tmpClusterSize, numberofClusters, MPI_INT, MPI_SUM, comm);
+		printf("Proc %d: finish reducing cluster size\n", rank);
 
 		//compute the new cluster center
 		for(i = 0; i < numberofClusters; i++){
@@ -299,13 +325,13 @@ int kmeans(float **data, int numberofClusters, int numberofCoordinates,
 			updatedClusterSize[i] = 0;
 		}
 
-		int totaldifferences;
+
 		MPI_Allreduce(&differences, &totaldifferences, 1, MPI_INT, MPI_SUM, comm);
 		delta = totaldifferences / (double) numberofTotalData;
 	}
 
-	free(updatedClusters);
 	free(updatedClusters[0]);
+	free(updatedClusters);
 	free(updatedClusterSize);
 	free(tmpClusterSize);
 	return 1;

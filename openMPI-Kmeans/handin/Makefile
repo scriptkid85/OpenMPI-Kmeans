@@ -21,12 +21,12 @@ $(TARGET): $(OBJECTS)
 	$(CC) $(OBJECTS) -Wall $(LIBS) -o $@
 
 dbg:
-	mpirun --debug mpirun -np 1 -machinefile machinefile.local ../Debug/TestMPI -i data/input/cluster.csv -o data/res/2d.txt -k 2 -t 0.01 -l 20 -d 2
+	mpirun --debug mpirun -np 1 -machinefile machinefile.local ../Debug/$(TARGET) -i data/input/cluster.csv -o data/res/2d.txt -k 2 -t 0.01 -l 20 -d 2
 
 demo:
-	mpirun -np 2 -machinefile machinefile.local ../Debug/TestMPI -i ../data/input/cluster.csv -o ../data/res/2d.txt -k 2 -t 0.01 -l 20 -d 2
+	mpirun -np 2 -machinefile machinefile.local ../Debug/$(TARGET) -i ../data/input/cluster.csv -o ../data/res/2d.txt -k 2 -t 0.01 -l 20 -d 2
 ghc:
-	mpirun -np 2 -machinefile machinefile.ghc ./TestMPI -i ../data/input/cluster.csv -o ../data/res/2d.txt -k 2 -t 0.01 -l 20 -d 2
+	mpirun -np 2 -machinefile machinefile.ghc ./$(TARGET) -i ../data/input/cluster.csv -o ../data/res/2d.txt -k 2 -t 0.01 -l 20 -d 2
 
 clean:
 	-rm -f *.o
