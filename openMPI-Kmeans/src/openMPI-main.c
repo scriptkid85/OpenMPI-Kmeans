@@ -24,6 +24,7 @@ int main(int argc, char **argv) {
 	extern char *optarg;
 	extern int optind, optopt;
 	int c, ncluster = 4, rank, nworker, nline, totalLine, ndim, i = 0, j=0;
+	int type;
 	char *inFile, *outFile;
 	float thres = 0.01;
 
@@ -35,8 +36,16 @@ int main(int argc, char **argv) {
 		stimeCluster, etimeCluster;	// maximum cluster time among all processes
 	double elapse, elapseWhole, elapseCluster, elapseClusterWhole;
 
-	while ((c = getopt(argc, argv, "i:o:k:t:l:d:")) != EOF) {
+	if(argc != 15) {
+		printUsage(argv[0]);
+		exit(EXIT_FAILURE);
+	}
+
+	while ((c = getopt(argc, argv, "p:i:o:k:t:l:d:")) != EOF) {
 		switch (c) {
+		case 'p':
+			type = atoi(optarg);
+			break;
 		case 'i':
 			inFile = optarg;
 			break;
@@ -100,7 +109,7 @@ int main(int argc, char **argv) {
 	stimeCluster = MPI_Wtime();
 	label = (int *) malloc(nline * sizeof(int));
 	//printf("rank:%d prior kmeans\n", rank);
-	kmeans(0, data, ncluster, ndim, nline, thres, label, centroid, MPI_COMM_WORLD);
+	kmeans(type, data, ncluster, ndim, nline, thres, label, centroid, MPI_COMM_WORLD);
 	printf("rank:%d kmeans done\n", rank);
 	etimeCluster = MPI_Wtime();
 
@@ -121,7 +130,7 @@ int main(int argc, char **argv) {
 	// performance report
 	printf("Done! Rank: %d\tTime: %f\n", rank, etime-stime);
 	if(rank == 0)
-		printf("System time: %f\tClustering time: %f\n", elapseWhole, elapseCluster);
+		printf("System time: %f secs\tClustering time: %fsecs\n", elapseWhole, elapseCluster);
 
 	MPI_Finalize();
 	return EXIT_SUCCESS;

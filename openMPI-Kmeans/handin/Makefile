@@ -20,14 +20,16 @@ HEADERS = ../src/*.h
 $(TARGET): $(OBJECTS)
 	$(CC) $(OBJECTS) -Wall $(LIBS) -o $@
 
-dbg:
-	mpirun --debug mpirun -np 1 -machinefile machinefile.local ../Debug/$(TARGET) -i data/input/cluster.csv -o data/res/2d.txt -k 2 -t 0.01 -l 20 -d 2
 
 demo:
-	mpirun -np 2 -machinefile machinefile.local ../Debug/$(TARGET) -i ../data/input/cluster.csv -o ../data/res/2d.txt -k 2 -t 0.01 -l 20 -d 2
+	mpirun -np 3 -machinefile machinefile.local ../Debug/$(TARGET) -p 0 -i ../data/input/cluster.csv -o ./2d.txt -k 2 -t 0.01 -l 20 -d 2
 ghc:
-	mpirun -np 2 -machinefile machinefile.ghc ./$(TARGET) -i ../data/input/cluster.csv -o ../data/res/2d.txt -k 2 -t 0.01 -l 20 -d 2
+	mpirun -np 3 -machinefile machinefile.ghc ./$(TARGET) -p 0 -i ../data/input/cluster.csv -o ./2d.txt -k 2 -t 0.01 -l 20 -d 2
 
+demodna:
+	mpirun -np 2 -machinefile machinefile.local ../Debug/$(TARGET) -p 1 -i ../data/input/clusterDNA.csv -o ./dna.txt -k 2 -t 0.1 -l 20 -d 10
+ghcdna:
+	mpirun -np 2 -machinefile machinefile.ghc ./$(TARGET) -p 1 -i ../data/input/clusterDNA.csv -o ./dna.txt -k 2 -t 0.1 -l 20 -d 10
 clean:
 	-rm -f *.o
 	-rm -f $(TARGET)
