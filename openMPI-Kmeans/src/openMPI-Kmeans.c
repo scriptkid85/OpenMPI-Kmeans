@@ -14,7 +14,7 @@
 #include <float.h>
 #include "openMPI-Kmeans.h"
 #include <math.h>
-#define MY_MAXITER 1000
+#define MY_MAXITER 500
 
 //
 float** kmeans_read(char *fname, int *nline, int ndim, MPI_Comm comm) {
@@ -208,7 +208,7 @@ float Compute_ED(float *datapoint1, float *datapoint2, int numberofCoordinates){
 	for(i = 0; i < numberofCoordinates; i++){
 		distance += (datapoint1[i] - datapoint2[i]) * (datapoint1[i] - datapoint2[i]);
 	}
-	return sqrt(distance);
+	return distance;
 }
 
 
@@ -241,15 +241,10 @@ int kmeans(float **data, int numberofClusters, int numberofCoordinates,
 	int rank;
 	MPI_Comm_rank(comm, &rank);
 
-	for(i = 0; i < numberofClusters; i++ ){
-			printf("Proc %d:cluster%d: %f %f\n", rank, i, clusters[i][0], clusters[i][1]);
-	}
 
 	//get the total data number
 	int numberofTotalData = 0;
-	printf("Proc %d: start communicate totalnumber", rank);
 	MPI_Allreduce(&numberofData, &numberofTotalData, 1, MPI_INT, MPI_SUM, comm);
-	printf("Proc %d: total number %d.\n", rank, numberofTotalData);
 
 
 	//initialization
@@ -257,7 +252,7 @@ int kmeans(float **data, int numberofClusters, int numberofCoordinates,
 	updatedClusterSize = (int *) calloc(numberofClusters, sizeof(int));
 	tmpClusterSize = (int *) calloc(numberofClusters, sizeof(int));
 
-	updatedClusters = (float **) calloc(numberofClusters, sizeof(float*));
+	updatedClusters = (float **) malloc(numberofClusters * sizeof(float*));
 	updatedClusters[0] = (float *) calloc(numberofClusters * numberofCoordinates,
 			sizeof(float));
 
@@ -268,14 +263,11 @@ int kmeans(float **data, int numberofClusters, int numberofCoordinates,
 	}
 
 	//reset memeber ship
-	membership[0] = -1;
-	for (i = 1; i < numberofClusters; i++) {
-		updatedClusters[i] = updatedClusters[i - 1] + numberofCoordinates;
+	for (i = 0; i < numberofData; i++){
 		membership[i] = -1;
 	}
-
-	for(i = 0; i < numberofData; i++ ){
-		printf("Proc %d: membership of %d: %d\n",rank, i, membership[i]);
+	for (i = 1; i < numberofClusters; i++) {
+		updatedClusters[i] = updatedClusters[i - 1] + numberofCoordinates;
 	}
 
 	float delta;
@@ -283,8 +275,11 @@ int kmeans(float **data, int numberofClusters, int numberofCoordinates,
 	int index, differences;
 	int iterations = 0;
 	while(delta > stopthreshold && iterations < MY_MAXITER){
+		differences = 0;
 		iterations ++;
 		printf("Proc %d: iteration %d \n", rank, iterations);
+
+
 //		may use the Wtime to record computing time
 //		double time = MPI_Wtime();
 
@@ -295,7 +290,6 @@ int kmeans(float **data, int numberofClusters, int numberofCoordinates,
 				printf("Proc %d Error: mistake in finding nearest cluster.", rank);
 				exit(1);
 			}
-			printf("Proc %d: NN of data %d: %d.\n", rank, i, index);
 			if(index != membership[i])differences ++;
 			membership[i] = index;
 			updatedClusterSize[index]++;
@@ -303,16 +297,12 @@ int kmeans(float **data, int numberofClusters, int numberofCoordinates,
 				updatedClusters[index][j] += data[i][j];
 			}
 		}
-		printf("Proc %d: finish neighbors\n", rank, i, index);
+
 		//reduce all cluster's partial sums to the total sum for every cluster
 		MPI_Allreduce(updatedClusters[0], clusters[0], numberofClusters * numberofCoordinates, MPI_FLOAT, MPI_SUM, comm);
-//		MPI_Allreduce(updatedClusters[0], clusters[0], 1, MPI_FLOAT, MPI_SUM, comm);
 
 		//reduce all cluster'size to get the total size for every cluster
-		printf("Proc %d: finish reducing clusters\n", rank);
-
 		MPI_Allreduce(updatedClusterSize, tmpClusterSize, numberofClusters, MPI_INT, MPI_SUM, comm);
-		printf("Proc %d: finish reducing cluster size\n", rank);
 
 		//compute the new cluster center
 		for(i = 0; i < numberofClusters; i++){
