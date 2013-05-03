@@ -1,4 +1,4 @@
-TARGET = openMPI
+TARGET = openMPI-Kmeans
 LIBS = -lm
 CC = mpicc
 CFLAGS = -g -Wall

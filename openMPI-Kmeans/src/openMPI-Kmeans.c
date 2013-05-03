@@ -210,7 +210,7 @@ float Compute_ED(float *datapoint1, float *datapoint2, int numberofCoordinates){
 //for find the nearest neighbor in the given set;
 int find_NN(float *datapoint, float ** neighborset, int numberofNeighber,
 		int numberofCoordinates) {
-	int i, j;
+	int i;
 	int nearest_neighbor = -1;
 	float distance, mindist;
 	mindist = FLT_MAX;
