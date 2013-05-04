@@ -16,9 +16,8 @@
 #include <math.h>
 #define MY_MAXITER 500
 
-//
+//kmeans_read is used to read data from input files
 float** kmeans_read(char *fname, int *nline, int ndim, MPI_Comm comm) {
-	//float data[*nline][ndim], **dataShard;
 	float **data, **dataShard;
 	const int root = 0;
 	int rank, size, i = 1, num = 0;
@@ -27,16 +26,8 @@ float** kmeans_read(char *fname, int *nline, int ndim, MPI_Comm comm) {
 
 	MPI_Comm_rank(comm, &rank);
 	MPI_Comm_size(comm, &size);
-	//printf("rank:%d\tsize:%d\n", rank, size);
 
-	/* everyone calls bcast, data is taken from root and ends up in everyone's buf */
-	// send to other processes
-//	MPI_Bcast(nline, 1, MPI_INT, 0, comm);
-//	MPI_Bcast(&ndim, 1, MPI_INT, 0, comm);
 
-	//printf("nline:%d\tndim:%d\n", *nline, ndim);
-
-	// process id==0
 	if (rank == root) {
 		FILE * fp;
 		char * line = NULL;
@@ -57,19 +48,14 @@ float** kmeans_read(char *fname, int *nline, int ndim, MPI_Comm comm) {
 			token = strtok(line, " ,");
 			while (token != NULL ) {
 				data[num][j++] = atof(token);
-//				printf("%s\t", token);
 				token = strtok(NULL, " ,");
 			}
 			num++;
-//			printf("%d\n", num);
-//			printf("Retrieved line of length %zu :\n", read);
-//			printf("%s", line);
 		}
 
 		// send data to different processes
 		int div = *nline / size;	// # of lines for each block
 		int rem = *nline % size;
-//		printf("here! div:%d\trem:%d", div, rem);
 
 		int start = rem > 0 ? div + 1 : div;
 		int startInit = start;	// save for cooking rank 0's own data
@@ -84,10 +70,6 @@ float** kmeans_read(char *fname, int *nline, int ndim, MPI_Comm comm) {
 			start += transSize;
 		}
 
-		// cook rank 0's own data
-//		dataShard = data;
-//		dataShard[0] = (float *) realloc(dataShard[0], startInit * ndim *sizeof(float));
-//		dataShard = (float **) realloc(dataShard, startInit * sizeof(float *));	// pointers for each row
 		*nline = startInit;
 		dataShard = (float**) malloc(*nline * sizeof(float *));
 		dataShard[0] = (float *) malloc(*nline * ndim * sizeof(float));
@@ -136,45 +118,21 @@ int kmeans_write(char *outputfilename,
 		printf("Start writing results (cluster centroid and membership) of K=%d cluster centers to file \"%s\"\n",
 				numberofClusters, outputfilename);
 
-//		err = MPI_File_open(MPI_COMM_SELF, outputfilename,
-//				MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &mpif);
-//		if (err != MPI_SUCCESS) {
-//			printf("Error: Cannot access file \"%s\"\n",
-//					outputfilename);
-//			MPI_Finalize();
-//			exit(1);
 		fp = fopen(outputfilename, "w");
 		if (fp == NULL ){
 			printf("Error: cannot access the outputfile: %s\n", outputfilename);
 			exit(EXIT_FAILURE);
 		} else {
 			for (i = 0; i < numberofClusters; i++) {
-//				char str[32];
 				fprintf(fp, "%d ", i);
-//				MPI_File_write(mpif, str, strlen(str), MPI_CHAR, &mpistatus);
 				for (j = 0; j < numberofCoordinates; j++) {
 					fprintf(fp, "%f ", clusters[i][j]);
 
 				}
-//				MPI_File_write(mpif, "\n", 1, MPI_CHAR, &mpistatus);
 				fprintf(fp, "\n");
 			}
 		}
 		printf("Finish writing clusters");
-//		MPI_File_close(&mpif);
-//
-//		printf(
-//				"Start writing clusters to which all %d data belonging to file \"%s\"\n",
-//				numberofTotalData, filename_belongtocluster);
-//		err = MPI_File_open(comm, filename_belongtocluster,
-//				MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &mpif);
-//		if (err != MPI_SUCCESS) {
-//			printf("Error: Cannot access file \"%s\"\n",
-//					filename_belongtocluster);
-//			MPI_Finalize();
-//			exit(1);
-//		}
-
 		//wait for the other memebership from other processors*/
 		int divd = numberofTotalData / nproc;
 		int rem = numberofTotalData % nproc;
@@ -186,8 +144,6 @@ int kmeans_write(char *outputfilename,
 				//print out local membership
 				for (j = 0; j < numberofLocalData; j++) {
 					fprintf(fp, "%d %d\n", outputCount++, localMemebership[j]);
-//					MPI_File_write(mpif, str, strlen(str), MPI_CHAR,
-//							&mpistatus);
 				}
 				continue;
 			}
@@ -196,7 +152,6 @@ int kmeans_write(char *outputfilename,
 			//print out received membership
 			for (j = 0; j < numberofRecData; j++) {
 				fprintf(fp, "%d %d\n", outputCount++, localMemebership[j]);
-//				MPI_File_write(mpif, str, strlen(str), MPI_CHAR, &mpistatus);
 			}
 		}
 		fclose(fp);
@@ -217,6 +172,7 @@ float Compute_ED(float *datapoint1, float *datapoint2, int numberofCoordinates){
 	return distance;
 }
 
+//for computing the DNA distance (for DNA data point)
 float Compute_DNADist(float *datapoint1, float *datapoint2, int numberofCoordinates){
 	float distance = 0;
 	int i;
@@ -238,11 +194,6 @@ int find_NN(int type, float *datapoint, float ** neighborset, int numberofNeighb
 			distance = Compute_ED(datapoint, neighborset[i], numberofCoordinates);
 		else if(type == DNADATA)
 			distance = Compute_DNADist(datapoint, neighborset[i], numberofCoordinates);
-//		printf("data point: ");
-//		for(j = 0; j < numberofCoordinates; j++){
-//			printf("%f ", datapoint[j]);
-//		}
-//		printf("\n distance with cluster %d is %f\n", i, distance);
 		if(distance < mindist){
 			mindist = distance;
 			nearest_neighbor = i;
@@ -266,15 +217,6 @@ int kmeans(int type, float **data, int numberofClusters, int numberofCoordinates
 	//get the total data number
 	int numberofTotalData = 0;
 	MPI_Allreduce(&numberofData, &numberofTotalData, 1, MPI_INT, MPI_SUM, comm);
-
-
-//	for(i = 0; i < numberofClusters; i++){
-//		printf("Proc %d cluster %d: ", rank, i);
-//		for(j = 0; j < numberofCoordinates; j++){
-//			printf("%f ", clusters[i][j]);
-//		}
-//		printf("\n");
-//	}
 
 	//initialization
 	//malloc space for pointers
@@ -348,13 +290,9 @@ int kmeans(int type, float **data, int numberofClusters, int numberofCoordinates
 				}
 			}
 			else if(type == DNADATA){
-//				printf("Proc %d: index-> %d: ", rank, index);
 				for(j = 0; j < numberofCoordinates; j++){
-//					printf("dna->%d, ", (int)data[i][j] - 1);
 					ClusterDNAcounts[index][j][(int)data[i][j] - 1]++;
-//					printf("counter = %d, ", ClusterDNAcounts[index][j][(int)data[i][j] - 1]);
 				}
-//				printf("\n");
 			}
 			else{
 				printf("Error: data type undefined.");
@@ -382,11 +320,6 @@ int kmeans(int type, float **data, int numberofClusters, int numberofCoordinates
 		else if(type == DNADATA){
 			for(i = 0; i < numberofClusters; i++){
 				MPI_Allreduce(ClusterDNAcounts[i][0], tmpClusterDNAcounts[i][0], numberofCoordinates * DNATYPENUM, MPI_INT, MPI_SUM, comm);
-//				printf("Proc %d: received totoal dna count of cluster %d: ", rank, i);
-//				for(k = 0; k < numberofCoordinates; k++){
-//					printf("1:%d 2:%d 3:%d 4:%d, ", tmpClusterDNAcounts[i][k][0], tmpClusterDNAcounts[i][k][1], tmpClusterDNAcounts[i][k][2], tmpClusterDNAcounts[i][k][3]);
-//				}
-//				printf("\n");
 
 				for(j = 0; j < numberofCoordinates; j++){
 					int mostappearDNA = -1;
@@ -401,11 +334,6 @@ int kmeans(int type, float **data, int numberofClusters, int numberofCoordinates
 					//DNA is define from 1 to DNATYPENUM
 					clusters[i][j] = mostappearDNA + 1;
 				}
-//				printf("Proc %d: dna centrod: ", rank);
-//				for(k = 0; k < numberofCoordinates; k++){
-//					printf("%d ", (int)clusters[i][k]);
-//				}
-//				printf("\n");
 			}
 
 		}
