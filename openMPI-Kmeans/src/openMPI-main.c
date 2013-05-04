@@ -109,13 +109,13 @@ int main(int argc, char **argv) {
 	stimeCluster = MPI_Wtime();
 	label = (int *) malloc(nline * sizeof(int));
 	//printf("rank:%d prior kmeans\n", rank);
-	for(i = 0; i < ncluster; i++){
-			printf("Main Proc %d cluster %d: ", rank, i);
-			for(j = 0; j < ndim; j++){
-				printf("%f ", centroid[i][j]);
-			}
-			printf("\n");
-		}
+//	for(i = 0; i < ncluster; i++){
+//			printf("Main Proc %d cluster %d: ", rank, i);
+//			for(j = 0; j < ndim; j++){
+//				printf("%f ", centroid[i][j]);
+//			}
+//			printf("\n");
+//		}
 	kmeans(type, data, ncluster, ndim, nline, thres, label, centroid, MPI_COMM_WORLD);
 	printf("rank:%d kmeans done\n", rank);
 	etimeCluster = MPI_Wtime();
