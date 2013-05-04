@@ -244,10 +244,10 @@ int kmeans(int type, float **data, int numberofClusters, int numberofCoordinates
 		int numberofData, float stopthreshold, int *membership,
 		float **clusters, MPI_Comm comm) {
 	float **updatedClusters;
-	int *updatedClusterSize;
-	int *tmpClusterSize;
+	int *** ClusterDNAcounts, ***tmpClusterDNAcounts;
+	int *updatedClusterSize, *tmpClusterSize;
 
-	int i, j, totaldifferences;;
+	int i, j, k, totaldifferences;;
 	int rank;
 	MPI_Comm_rank(comm, &rank);
 
@@ -265,6 +265,30 @@ int kmeans(int type, float **data, int numberofClusters, int numberofCoordinates
 	updatedClusters = (float **) malloc(numberofClusters * sizeof(float*));
 	updatedClusters[0] = (float *) calloc(numberofClusters * numberofCoordinates,
 			sizeof(float));
+	for (i = 1; i < numberofClusters; i++) {
+		updatedClusters[i] = updatedClusters[i - 1] + numberofCoordinates;
+	}
+
+	//initiate the DNA counters
+	ClusterDNAcounts = (int ***) malloc(numberofClusters * sizeof(int**));
+	for(i = 0; i < numberofClusters; i++){
+		ClusterDNAcounts[i] = (int **) malloc(numberofCoordinates *
+				sizeof(int *));
+		ClusterDNAcounts[i][0] = (int *) calloc(DNATYPENUM * numberofCoordinates,
+						sizeof(int));
+		for(j = 1; j < numberofCoordinates; j ++)
+			ClusterDNAcounts[i][j] = ClusterDNAcounts[i][j - 1] + DNATYPENUM;
+	}
+
+	tmpClusterDNAcounts = (int ***) malloc(numberofClusters * sizeof(int**));
+		for(i = 0; i < numberofClusters; i++){
+			tmpClusterDNAcounts[i] = (int **) malloc(numberofCoordinates *
+					sizeof(int *));
+			tmpClusterDNAcounts[i][0] = (int *) calloc(DNATYPENUM * numberofCoordinates,
+							sizeof(int));
+			for(j = 1; j < numberofCoordinates; j ++)
+				tmpClusterDNAcounts[i][j] = tmpClusterDNAcounts[i][j - 1] + DNATYPENUM;
+	}
 
 	if (!updatedClusterSize || !tmpClusterSize || !updatedClusters
 			|| !updatedClusters[0]) {
@@ -276,9 +300,6 @@ int kmeans(int type, float **data, int numberofClusters, int numberofCoordinates
 	for (i = 0; i < numberofData; i++){
 		membership[i] = -1;
 	}
-	for (i = 1; i < numberofClusters; i++) {
-		updatedClusters[i] = updatedClusters[i - 1] + numberofCoordinates;
-	}
 
 	float delta;
 	delta = FLT_MAX;
@@ -288,10 +309,6 @@ int kmeans(int type, float **data, int numberofClusters, int numberofCoordinates
 		differences = 0;
 		iterations ++;
 		printf("Proc %d: iteration %d \n", rank, iterations);
-
-
-//		may use the Wtime to record computing time
-//		double time = MPI_Wtime();
 
 		delta = 0.0;
 		for(i = 0; i < numberofData; i++) {
@@ -303,28 +320,68 @@ int kmeans(int type, float **data, int numberofClusters, int numberofCoordinates
 			if(index != membership[i])differences ++;
 			membership[i] = index;
 			updatedClusterSize[index]++;
-			for(j = 0; j < numberofCoordinates; j++) {
-				updatedClusters[index][j] += data[i][j];
-			}
-		}
 
-		//reduce all cluster's partial sums to the total sum for every cluster
-		MPI_Allreduce(updatedClusters[0], clusters[0], numberofClusters * numberofCoordinates, MPI_FLOAT, MPI_SUM, comm);
-
-		//reduce all cluster'size to get the total size for every cluster
-		MPI_Allreduce(updatedClusterSize, tmpClusterSize, numberofClusters, MPI_INT, MPI_SUM, comm);
-
-		//compute the new cluster center
-		for(i = 0; i < numberofClusters; i++){
-			for(j = 0; j < numberofCoordinates; j++){
-				if(tmpClusterSize[i] > 0){
-					clusters[i][j] /= tmpClusterSize[i];
+			//update the sum of the coordinates for 2D data points
+			//which can be used for later usage
+			if(type == NORMDATA){
+				for(j = 0; j < numberofCoordinates; j++) {
+					updatedClusters[index][j] += data[i][j];
 				}
-				updatedClusters[i][j] = 0;
 			}
-			updatedClusterSize[i] = 0;
+			else if(type == DNADATA){
+				for(j = 0; j < numberofCoordinates; j++){
+//					printf("Proc %d: test-> %d\n", rank, (int)data[i][j] - 1);
+					ClusterDNAcounts[index][j][(int)data[i][j] - 1]++;
+				}
+			}
 		}
 
+		//compute the new cluster centroid
+		if(type == NORMDATA){
+			//reduce all cluster's partial sums to the total sum for every cluster
+			MPI_Allreduce(updatedClusters[0], clusters[0], numberofClusters * numberofCoordinates, MPI_FLOAT, MPI_SUM, comm);
+
+			//reduce all cluster'size to get the total size for every cluster
+			MPI_Allreduce(updatedClusterSize, tmpClusterSize, numberofClusters, MPI_INT, MPI_SUM, comm);
+			for(i = 0; i < numberofClusters; i++){
+				for(j = 0; j < numberofCoordinates; j++){
+					if(tmpClusterSize[i] > 0){
+						clusters[i][j] /= tmpClusterSize[i];
+					}
+					updatedClusters[i][j] = 0;
+				}
+				updatedClusterSize[i] = 0;
+			}
+		}
+		else if(type == DNADATA){
+			for(i = 0; i < numberofClusters; i++){
+				MPI_Allreduce(ClusterDNAcounts[i][0], tmpClusterDNAcounts[i][0], numberofCoordinates * DNATYPENUM, MPI_INT, MPI_SUM, comm);
+//				printf("Proc %d: received totoal dna count of cluster %d: ", rank, i);
+//				for(k = 0; k < numberofCoordinates; k++){
+//					printf("1:%d 2:%d 3:%d 4:%d, ", tmpClusterDNAcounts[i][k][0], tmpClusterDNAcounts[i][k][1], tmpClusterDNAcounts[i][k][2], tmpClusterDNAcounts[i][k][3]);
+//				}
+//				printf("\n");
+
+				for(j = 0; j < numberofCoordinates; j++){
+					int mostappearDNA = -1;
+					int maxcount = 0;
+					for(k = 0; k < DNATYPENUM; k ++){
+						if(tmpClusterDNAcounts[i][j][k] > maxcount){
+							mostappearDNA = k;
+							maxcount = tmpClusterDNAcounts[i][j][k];
+						}
+						ClusterDNAcounts[i][j][k] = 0;
+					}
+					clusters[i][j] = mostappearDNA;
+				}
+//				printf("Proc %d: dna centrod: ", rank);
+//				for(k = 0; k < numberofCoordinates; k++){
+//					printf("%d ", (int)clusters[i][k]);
+//				}
+//				printf("\n");
+			}
+
+		}
 
 		MPI_Allreduce(&differences, &totaldifferences, 1, MPI_INT, MPI_SUM, comm);
 		delta = totaldifferences / (double) numberofTotalData;
@@ -334,5 +391,14 @@ int kmeans(int type, float **data, int numberofClusters, int numberofCoordinates
 	free(updatedClusters);
 	free(updatedClusterSize);
 	free(tmpClusterSize);
+	for(i = 0; i < numberofClusters; i++){
+		free(ClusterDNAcounts[i][0]);
+	}
+	free(ClusterDNAcounts);
+	for(i = 0; i < numberofClusters; i++){
+			free(tmpClusterDNAcounts[i][0]);
+		}
+	free(tmpClusterDNAcounts);
+
 	return 1;
 }
