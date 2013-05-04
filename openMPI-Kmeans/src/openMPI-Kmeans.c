@@ -372,7 +372,8 @@ int kmeans(int type, float **data, int numberofClusters, int numberofCoordinates
 						}
 						ClusterDNAcounts[i][j][k] = 0;
 					}
-					clusters[i][j] = mostappearDNA;
+					//DNA is define from 1 to DNATYPENUM
+					clusters[i][j] = mostappearDNA + 1;
 				}
 //				printf("Proc %d: dna centrod: ", rank);
 //				for(k = 0; k < numberofCoordinates; k++){
