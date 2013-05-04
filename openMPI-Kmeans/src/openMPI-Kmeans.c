@@ -18,7 +18,8 @@
 
 //
 float** kmeans_read(char *fname, int *nline, int ndim, MPI_Comm comm) {
-	float data[*nline][ndim], **dataShard;
+	//float data[*nline][ndim], **dataShard;
+	float **data, **dataShard;
 	const int root = 0;
 	int rank, size, i = 1, num = 0;
 	char *token;
@@ -45,6 +46,11 @@ float** kmeans_read(char *fname, int *nline, int ndim, MPI_Comm comm) {
 		fp = fopen(fname, "r");
 		if (fp == NULL )
 			exit(EXIT_FAILURE);
+
+		data = (float **) malloc(*nline * sizeof(float *));
+		data[0] = (float *) malloc(*nline * ndim * sizeof(float));
+		for(i = 1; i < *nline; i++)
+			data[i] = data[i-1] + ndim;
 
 		while ((read = getline(&line, &len, fp)) != -1) {
 			int j = 0;
@@ -143,7 +149,7 @@ int kmeans_write(char *outputfilename,
 			exit(EXIT_FAILURE);
 		} else {
 			for (i = 0; i < numberofClusters; i++) {
-				char str[32];
+//				char str[32];
 				fprintf(fp, "%d ", i);
 //				MPI_File_write(mpif, str, strlen(str), MPI_CHAR, &mpistatus);
 				for (j = 0; j < numberofCoordinates; j++) {

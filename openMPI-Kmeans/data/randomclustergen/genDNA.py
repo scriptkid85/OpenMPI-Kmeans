@@ -94,16 +94,16 @@ for i in range(0, numClusters):
 
 # step 2: generate the points for each centroid
 points = []
-for i in range(0, numClusters):
-    cluster = centroids_radii[i]
-    for j in range(0, numPoints):
+for j in range(0, numPoints):
+	for i in range(0, numClusters):
+		cluster = centroids_radii[i]
 		vec = numpy.copy(cluster)
-		numdiff = numpy.random.random_integers(2)
+		numdiff = numpy.random.random_integers(1)
 		idxdiff = numpy.random.random_integers(0, maxValue-1, numdiff)
-		
+	
 		for k in idxdiff:
 			vec[k] += 1
-		
+	
 		vec[vec < 1] = 1
 		vec[vec > 4] = 4
 		# write the points out
