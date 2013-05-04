@@ -1,5 +1,5 @@
 #Number of Points
-b=10000
+b=1000000
 #Number of Cluster
 k=3
 #Number of dimensions
