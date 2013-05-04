@@ -334,6 +334,10 @@ int kmeans(int type, float **data, int numberofClusters, int numberofCoordinates
 					ClusterDNAcounts[index][j][(int)data[i][j] - 1]++;
 				}
 			}
+			else{
+				printf("Error: data type undefined.");
+				exit(1);
+			}
 		}
 
 		//compute the new cluster centroid
@@ -382,6 +386,10 @@ int kmeans(int type, float **data, int numberofClusters, int numberofCoordinates
 //				printf("\n");
 			}
 
+		}
+		else{
+			printf("Error: data type undefined.");
+			exit(1);
 		}
 
 		MPI_Allreduce(&differences, &totaldifferences, 1, MPI_INT, MPI_SUM, comm);
