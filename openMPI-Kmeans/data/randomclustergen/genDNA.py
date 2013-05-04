@@ -84,7 +84,7 @@ writer = csv.writer(fout)
 
 # step 1: generate each 2D centroid
 centroids_radii = []
-minDistance = maxValue / 2
+minDistance = maxValue / numClusters
 for i in range(0, numClusters):
     centroid_radius = drawOrigin(maxValue)
     # is it far enough from the others?
@@ -98,8 +98,8 @@ for i in range(0, numClusters):
     cluster = centroids_radii[i]
     for j in range(0, numPoints):
 		vec = numpy.copy(cluster)
-		numdiff = numpy.random.random_integers(4)
-		idxdiff = numpy.random.random_integers(1, 4, numdiff)
+		numdiff = numpy.random.random_integers(2)
+		idxdiff = numpy.random.random_integers(0, maxValue-1, numdiff)
 		
 		for k in idxdiff:
 			vec[k] += 1

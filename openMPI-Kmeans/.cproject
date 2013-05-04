@@ -25,9 +25,9 @@
 								<option defaultValue="gnu.c.optimization.level.none" id="gnu.c.compiler.option.optimization.level.854690646" name="Optimization Level" superClass="gnu.c.compiler.option.optimization.level" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.debugging.level.1711897944" name="Debug Level" superClass="gnu.c.compiler.option.debugging.level" value="gnu.c.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.include.paths.231722528" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="/Users/guanyuw/Software/openMPI/include/openmpi/ompi/mpi/cxx"/>
-									<listOptionValue builtIn="false" value="/Users/guanyuw/Software/openMPI/include/openmpi"/>
-									<listOptionValue builtIn="false" value="/Users/guanyuw/Software/openMPI/include"/>
+									<listOptionValue builtIn="false" value="/Users/root/openmpi/include/openmpi/ompi/mpi/cxx"/>
+									<listOptionValue builtIn="false" value="/Users/root/openmpi"/>
+									<listOptionValue builtIn="false" value="/Users/root/openmpi/include"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1705573520" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>

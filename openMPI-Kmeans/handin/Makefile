@@ -37,9 +37,9 @@ ghcbig:
 	mpirun -np 3 -machinefile machinefile.ghc ./$(TARGET) -p 0 -i ../data/input/cluster.csv -o ./2d.txt -k 2 -t 0.01 -l 20 -d 2
 
 demodnabig:
-	mpirun -np 2 -machinefile machinefile.local ../Debug/$(TARGET) -p 1 -i ../data/input/clusterDNA.csv -o ./dna.txt -k 5 -t 0.1 -l 50000 -d 10
+	mpirun -np 3 -machinefile machinefile.local ../Debug/$(TARGET) -p 1 -i ../data/input/clusterDNA.big.csv -o ./dnabig.txt -k 3 -t 0.1 -l 30000 -d 10
 ghcdnabig:
-	mpirun -np 2 -machinefile machinefile.ghc ./$(TARGET) -p 1 -i ../data/input/clusterDNA.big.csv -o ./dnabig.txt -k 5 -t 0.1 -l 50000 -d 10
+	mpirun -np 2 -machinefile machinefile.ghc ./$(TARGET) -p 1 -i ../data/input/clusterDNA.big.csv -o ./dnabig.txt -k 3 -t 0.1 -l 30000 -d 10
 clean:
 	-rm -f *.o
 	-rm -f $(TARGET)
