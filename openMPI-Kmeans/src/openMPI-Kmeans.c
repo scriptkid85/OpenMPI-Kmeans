@@ -14,7 +14,7 @@
 #include <float.h>
 #include "openMPI-Kmeans.h"
 #include <math.h>
-#define MY_MAXITER 500
+#define MY_MAXITER 1
 
 //
 float** kmeans_read(char *fname, int *nline, int ndim, MPI_Comm comm) {
@@ -215,7 +215,7 @@ float Compute_DNADist(float *datapoint1, float *datapoint2, int numberofCoordina
 	float distance = 0;
 	int i;
 	for(i = 0; i < numberofCoordinates; i++){
-		distance += (datapoint1[i] == datapoint2[i]) ? 0 : 1;
+		distance += abs(datapoint1[i] - datapoint2[i]) < 0.001 ? 0 : 1;
 	}
 	return distance;
 }
@@ -223,7 +223,7 @@ float Compute_DNADist(float *datapoint1, float *datapoint2, int numberofCoordina
 //for find the nearest neighbor in the given set;
 int find_NN(int type, float *datapoint, float ** neighborset, int numberofNeighber,
 		int numberofCoordinates) {
-	int i;
+	int i, j;
 	int nearest_neighbor = -1;
 	float distance, mindist;
 	mindist = FLT_MAX;
@@ -232,6 +232,11 @@ int find_NN(int type, float *datapoint, float ** neighborset, int numberofNeighb
 			distance = Compute_ED(datapoint, neighborset[i], numberofCoordinates);
 		else if(type == DNADATA)
 			distance = Compute_DNADist(datapoint, neighborset[i], numberofCoordinates);
+//		printf("data point: ");
+//		for(j = 0; j < numberofCoordinates; j++){
+//			printf("%f ", datapoint[j]);
+//		}
+//		printf("\n distance with cluster %d is %f\n", i, distance);
 		if(distance < mindist){
 			mindist = distance;
 			nearest_neighbor = i;
@@ -256,6 +261,14 @@ int kmeans(int type, float **data, int numberofClusters, int numberofCoordinates
 	int numberofTotalData = 0;
 	MPI_Allreduce(&numberofData, &numberofTotalData, 1, MPI_INT, MPI_SUM, comm);
 
+
+	for(i = 0; i < numberofClusters; i++){
+		printf("Proc %d cluster %d: ", rank, i);
+		for(j = 0; j < numberofCoordinates; j++){
+			printf("%f ", clusters[i][j]);
+		}
+		printf("\n");
+	}
 
 	//initialization
 	//malloc space for pointers
@@ -319,20 +332,23 @@ int kmeans(int type, float **data, int numberofClusters, int numberofCoordinates
 			}
 			if(index != membership[i])differences ++;
 			membership[i] = index;
-			updatedClusterSize[index]++;
 
 			//update the sum of the coordinates for 2D data points
 			//which can be used for later usage
 			if(type == NORMDATA){
+				updatedClusterSize[index]++;
 				for(j = 0; j < numberofCoordinates; j++) {
 					updatedClusters[index][j] += data[i][j];
 				}
 			}
 			else if(type == DNADATA){
+				printf("Proc %d: index-> %d: ", rank, index);
 				for(j = 0; j < numberofCoordinates; j++){
-//					printf("Proc %d: test-> %d\n", rank, (int)data[i][j] - 1);
+					printf("dna->%d, ", (int)data[i][j] - 1);
 					ClusterDNAcounts[index][j][(int)data[i][j] - 1]++;
+					printf("counter = %d, ", ClusterDNAcounts[index][j][(int)data[i][j] - 1]);
 				}
+				printf("\n");
 			}
 			else{
 				printf("Error: data type undefined.");
@@ -360,11 +376,11 @@ int kmeans(int type, float **data, int numberofClusters, int numberofCoordinates
 		else if(type == DNADATA){
 			for(i = 0; i < numberofClusters; i++){
 				MPI_Allreduce(ClusterDNAcounts[i][0], tmpClusterDNAcounts[i][0], numberofCoordinates * DNATYPENUM, MPI_INT, MPI_SUM, comm);
-//				printf("Proc %d: received totoal dna count of cluster %d: ", rank, i);
-//				for(k = 0; k < numberofCoordinates; k++){
-//					printf("1:%d 2:%d 3:%d 4:%d, ", tmpClusterDNAcounts[i][k][0], tmpClusterDNAcounts[i][k][1], tmpClusterDNAcounts[i][k][2], tmpClusterDNAcounts[i][k][3]);
-//				}
-//				printf("\n");
+				printf("Proc %d: received totoal dna count of cluster %d: ", rank, i);
+				for(k = 0; k < numberofCoordinates; k++){
+					printf("1:%d 2:%d 3:%d 4:%d, ", tmpClusterDNAcounts[i][k][0], tmpClusterDNAcounts[i][k][1], tmpClusterDNAcounts[i][k][2], tmpClusterDNAcounts[i][k][3]);
+				}
+				printf("\n");
 
 				for(j = 0; j < numberofCoordinates; j++){
 					int mostappearDNA = -1;
