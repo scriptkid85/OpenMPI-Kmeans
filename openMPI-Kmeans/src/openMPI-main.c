@@ -108,13 +108,11 @@ int main(int argc, char **argv) {
 	// do kmeans calculation
 	stimeCluster = MPI_Wtime();
 	label = (int *) malloc(nline * sizeof(int));
-	//printf("rank:%d prior kmeans\n", rank);
+
 	kmeans(type, data, ncluster, ndim, nline, thres, label, centroid, MPI_COMM_WORLD);
 	printf("rank:%d kmeans done\n", rank);
 	etimeCluster = MPI_Wtime();
 
-	// write cluster centroids to disk
-	// TODO 2 write to same outFile ?
 	kmeans_write(outFile, nline, totalLine, ncluster, ndim , centroid, label, 0, MPI_COMM_WORLD);
 
 	free(label);

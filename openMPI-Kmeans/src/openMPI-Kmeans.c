@@ -14,7 +14,7 @@
 #include <float.h>
 #include "openMPI-Kmeans.h"
 #include <math.h>
-#define MY_MAXITER 1
+#define MY_MAXITER 500
 
 //
 float** kmeans_read(char *fname, int *nline, int ndim, MPI_Comm comm) {
