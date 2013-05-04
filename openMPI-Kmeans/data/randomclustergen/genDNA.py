@@ -12,12 +12,15 @@ def usage():
         '\t-v [#]\t\tMaximum coordinate value for points\n'  
 
 
-def euclideanDistance(p1, p2):
-    '''
-    Takes two 2-D points and computes the Euclidean distance between them.
-    '''
-    return math.sqrt(math.pow((p2[0] - p1[0]), 2) + \
-                    math.pow((p2[1] - p1[1]), 2))
+def distance(p1, p2):
+	'''
+	Takes two dna sequence and computes the distance between them.
+	'''
+	dist = 0
+	for i in range(0, len(p1)):
+		if p1[i] != p2[i]:
+			dist += 1
+	return dist
 
 def tooClose(point, points, minDist):
     '''
@@ -26,7 +29,7 @@ def tooClose(point, points, minDist):
     this method returns true.
     '''
     for pair in points:
-        if euclideanDistance(point, pair) < minDist:
+        if distance(point, pair) < minDist:
                 return True
 
     return False
@@ -81,7 +84,7 @@ writer = csv.writer(fout)
 
 # step 1: generate each 2D centroid
 centroids_radii = []
-minDistance = 0
+minDistance = maxValue / 2
 for i in range(0, numClusters):
     centroid_radius = drawOrigin(maxValue)
     # is it far enough from the others?
@@ -91,20 +94,18 @@ for i in range(0, numClusters):
 
 # step 2: generate the points for each centroid
 points = []
-minClusterVar = 0.5
-maxClusterVar = 1.5
 for i in range(0, numClusters):
-    # compute the variance for this cluster
-    variance = numpy.random.uniform(minClusterVar, maxClusterVar)
     cluster = centroids_radii[i]
     for j in range(0, numPoints):
-        # generate a 2D point with specified variance
-        # point is normally-distributed around centroids[i]
-		vec = numpy.random.normal(cluster, variance, maxValue)
-		vec = numpy.around(vec)
+		vec = numpy.copy(cluster)
+		numdiff = numpy.random.random_integers(4)
+		idxdiff = numpy.random.random_integers(1, 4, numdiff)
+		
+		for k in idxdiff:
+			vec[k] += 1
+		
 		vec[vec < 1] = 1
 		vec[vec > 4] = 4
-		vec = vec.astype(int)
 		# write the points out
 		writer.writerow(vec)
 fout.close()

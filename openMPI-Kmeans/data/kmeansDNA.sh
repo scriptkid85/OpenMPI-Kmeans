@@ -1,7 +1,7 @@
 #Number of Points
-b=10
+b=10000
 #Number of Cluster
-k=2
+k=5
 #Number of dimensions
 v=10
 echo ********GENERATING $b INPUT POINTS EACH IN $k CLUSTERS 

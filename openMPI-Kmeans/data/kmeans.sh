@@ -1,6 +1,6 @@
 #Number of Points
-b=10
+b=10000
 #Number of Cluster
-k=2
+k=5
 echo ********GENERATING $b INPUT POINTS EACH IN $k CLUSTERS 
-python ./randomclustergen/generaterawdata.py -c $k -p $b -o input/cluster.csv
+python ./randomclustergen/generaterawdata.py -c $k -p $b -o input/cluster.big.csv
